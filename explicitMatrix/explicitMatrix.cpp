@@ -2968,14 +2968,132 @@ class Integrate: public Utilities {
         
         // *************************
         // QSS algorithm goes here.
-        // *************************
-        
-        
-        
-        
-        
-        
-    }
+        // ************************
+    
+        class QSSPre_Cor{
+            public:
+            // Save current values of F+, F-, and keff for later use. tempPop[Z][N]
+            // already contains the saved populations before update (i.e., from last time step)
+
+            //PREDICTOR
+              void QSSPredictor(double dt){
+
+             // Loop over all active isotopes and calculate the predictor
+             // populations. Unlike for asymptotic method, we will update all
+             // populations with the same predictor, irrespective of value of keff*dt for an isotope.
+
+                 for (int i = minNetZ; i <= maxNetZ; i++) {
+                    int indy = Math.min(maxNetN[i], nmax - 1);
+
+                    for (int j = minNetN[i]; j <= indy; j++) {
+                         FplusZero[i][j] = Fplus[i][j];
+                         keffZero[i][j] = keff[i][j];
+
+                         double kdt = keff[i][j] * dt; //may need to initialize if not defined elsewhere
+                         pop[i][j] = tempPop[i][j] + ((Fplus[i][j] - Fminus[i][j]) * dt / (1 + kdt * alphaValue(kdt)));
+                         // Clear flux accumulators for flux update for corrector step
+                         dpopPlus[i][j] = 0;
+                         dpopMinus[i][j] = 0;
+                   }
+                 }
+
+                 // Zero energy accumulators for the corrector step
+
+                 dERelease = 0;
+                 dEReleaseA = 0;
+
+                 // pop[Z][N] now contains the populations updated by the predictor for
+                 // timestep dt. Use these predicted populations to update the fluxes
+                 // and keff, using the same rates as for the predictor step.
+
+                 updateLightIonFluxes();
+                 updateHeavyFluxes();
+                 computekeff();
+               } // End Predictor
+
+            //CORRECTOR
+                 void QSSCorrector(double dt){
+                     double kBar, kdt, alphaBar, FplusTilde;
+                     double sumX = 0;
+                     double asysumX = 0;
+                     int numberAsymptotic = 0;
+
+                     for (int i = minNetZ; i <= maxNetZ; i++) {
+                         int indy = Math.min(maxNetN[i], nmax - 1);
+
+                         for (int j = minNetN[i]; j <= indy; j++) {
+                              kBar = 0.5 * (keffZero[i][j] + keff[i][j]);
+                              kdt = kBar * dt;
+                              alphaBar = alphaValue(kdt);
+                              FplusTilde = alphaBar * Fplus[i][j] + (1 - alphaBar) * FplusZero[i][j];
+                              pop[i][j] = tempPop[i][j] + ((FplusTilde - kBar * tempPop[i][j]) * dt) / (1 + alphaBar * kdt);
+                             // check the dt in the numerator (in paper there is a typo)
+
+                             Y[i][j] = pop[i][j] / nT; 
+
+                       // *******cannot identify use right now*******
+                        /*  if (kdt >= 1) {
+                               isAsymptotic[i][j] = true;
+                               numberAsymptotic++;
+                               asysumX += (Y[i][j] * AA[i][j]);
+                             } else {
+                                 isAsymptotic[i][j] = false;
+                                }
+                                
+                             sumX += (Y[i][j] * AA[i][j]); 
+                             ******************************* */ 
+                         }
+                     }
+                 } // End Corrector
+         } // End Class QSSPre_Corr
+    
+         class calcAlpha{
+
+             double alphaValue(double a) {  // a k0*dt
+            public:
+                 if (a < 1e-20)
+                      a = 1e-20; // Necessary to start integration correctly.
+                        // if(a==0) a+=0.0000000001; // This old version could crash because a^2
+                        // and a^3 could exceed max number size
+                      a = 1 / a;
+                      double a2 = a * a;
+                      double a3 = a2 * a;
+                   return (180 * a3 + 60 * a2 + 11 * a + 1) / (360 * a3 + 60 * a2 + 12 * a + 1);
+                 };
+         }; //end calcAlpha
+    
+         class updatePop{
+            public:
+            void steadyState(double dt) {
+
+                 // Iteraration loop NOTE: nit is number of predictor-corrector steps
+                 // normally nit=1
+
+                 for (int i = 0; i < nit; i++) {
+                      ssPredictor(dt);
+                      ssCorrector(dt);
+
+                     if (nit > 1) {
+                         for (int k = minNetZ; k <= maxNetZ; k++) {
+                             int indy = Math.min(maxNetN[k], nmax - 1);
+                             for (int j = minNetN[k]; j <= indy; j++) {
+                               // Clear flux accumulators for flux update for next
+                               // iteration
+                               dpopPlus[k][j] = 0;
+                              dpopMinus[k][j] = 0;
+                             }
+                         }
+                         // Zero energy accumulators for next iteration
+                         dERelease = 0;
+                         dEReleaseA = 0;
+
+                        updateLightIonFluxes();
+                        updateHeavyFluxes();
+                        computekeff();
+                     }
+                 }
+            } //end void steadyState
+         }; // end updatePop
     
     
     /* Use the fluxes to update the populations for this timestep
