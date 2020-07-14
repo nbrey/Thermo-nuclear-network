@@ -2969,7 +2969,10 @@ class Integrate: public Utilities {
         // *************************
         // QSS algorithm goes here.
         // ************************
-    
+   
+    //-----------------------------------------------
+    // Method to implement QSS Predictor and corrector
+    //------------------------------------------------
         class QSSPre_Cor{
             public:
             // Save current values of F+, F-, and keff for later use. tempPop[Z][N]
@@ -3047,6 +3050,9 @@ class Integrate: public Utilities {
                  } // End Corrector
          } // End Class QSSPre_Corr
     
+    //----------------------------------------
+    // Method to calculate alpha(kdt) for QSS
+    //---------------------------------------- 
          class calcAlpha{
 
              double alphaValue(double a) {  // a k0*dt
@@ -3062,6 +3068,9 @@ class Integrate: public Utilities {
                  };
          }; //end calcAlpha
     
+    //----------------------------------------------------
+    // Method to update populations for QSS approximation
+    //----------------------------------------------------
          class updatePop{
             public:
             void steadyState(double dt) {
@@ -3094,6 +3103,36 @@ class Integrate: public Utilities {
                  }
             } //end void steadyState
          }; // end updatePop
+    
+    //-----------------------------------------------------------------------------------
+    // Method to compute keff (effective decay const. for isotopes in asy. approximation)
+    //-----------------------------------------------------------------------------------
+    
+    // Note: I do not know if this is the correct spot for this, but I included it here --Nick 
+        class computekeff{
+         void computekeff() {
+              private:
+              sumFplus = 0;
+              sumFminus = 0;
+                     for (int i = minNetZ; i <= maxNetZ; i++) {
+                         int indy = Math.min(maxNetN[i], nmax - 1);
+                             for (int j = minNetN[i]; j <= indy; j++) {
+                                // Compute fluxes and keff
+                                 Fplus[i][j] = dpopPlus[i][j];
+                                 Fminus[i][j] = dpopMinus[i][j];
+                                      if (pop[i][j] > 0) {
+                                         keff[i][j] = Fminus[i][j] / pop[i][j];
+                                      } else {
+                                          keff[i][j] = 0;
+                                        }
+                                 sumFplus += (Fplus[i][j] * AA[i][j]);
+                                 sumFminus += (Fminus[i][j] * AA[i][j]);
+                             }
+                     }
+              sumFplus /= nT;
+              sumFminus /= nT;
+         }
+        }; // end class computekeff
     
     
     /* Use the fluxes to update the populations for this timestep
