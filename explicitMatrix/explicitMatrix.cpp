@@ -3053,20 +3053,19 @@ class Integrate: public Utilities {
     //----------------------------------------
     // Method to calculate alpha(kdt) for QSS
     //---------------------------------------- 
-         class calcAlpha{
-
-             double alphaValue(double a) {  // a k0*dt
+        class calcAlpha{
             public:
-                 if (a < 1e-20)
-                      a = 1e-20; // Necessary to start integration correctly.
-                        // if(a==0) a+=0.0000000001; // This old version could crash because a^2
-                        // and a^3 could exceed max number size
-                      a = 1 / a;
-                      double a2 = a * a;
-                      double a3 = a2 * a;
-                   return (180 * a3 + 60 * a2 + 11 * a + 1) / (360 * a3 + 60 * a2 + 12 * a + 1);
-                 };
-         }; //end calcAlpha
+            double alphaValue(double a){
+              if (a < 1e-20){
+                a = 1e-20;
+                a = 1/a;
+                double a2 = a*a;
+                double a3 = a2*a;
+            return (180 * a3 + 60 * a2 + 11 * a + 1) / (360 * a3 + 60 * a2 + 12 * a + 1);
+        }
+    }
+
+};
     
     //----------------------------------------------------
     // Method to update populations for QSS approximation
